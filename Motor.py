@@ -1,42 +1,64 @@
+####
+#
+# This class controls in what direction the
+# robot should be driving, depending on the
+# curvature of the track
+#
+# PD_control should probably not be
+# implemented here????
+#
+####
+
+
 from easygopigo3 import EasyGoPiGo3
-from time import sleep
 
 class Motor:
-    def__init__(self, Kp, Kd):
-    self.gpg = EasyGoPiGo()
-    self.Kp = Kp
-    self.Kd = Kd
+    def __init__(self):
+        self.gpg = EasyGoPiGo3()
+        self.left_motor_speed
+        self.right_motor_speed
 
     ####
     #
-    # Directional flags:
-    # 
-    # 0 = forward
-    # 1 = left
-    # 2 = right
-    # 3 = backward
+    # Unicycle model - based on linear and angular velocity
+    # Trying to keep the velocity low, for better performance.
+    # Hardware wise the maximum speed can be set to 1000dps
+    # We will keep the maximum speed to 300dps.
+    # Linear speed is set in the main loop, we have chosen
+    # 200dps to be the default linear speed.
+    #
+    # Curvature will define the total speed.
+    #
+    # if angular_speed == 0, then the robot is exactly on the lane and should
+    # drive forward.
+    #
+    # if angular_speed is less than 0 than the robot is on the right side
+    # of the lane and should turn left.
+    #
+    # if angular_speed is more than 0 then the robot is on the left side
+    # of the lane and should turn right.
+    #
+    # The time signature is for how long the method should be operational,
+    # have to investigate more on the functionallity of this. Maybe
+    # it is not needed at all.
     #
     ####
 
-    def move(directional_flag, speed_in_dps):
-        if directional_flag == 0:
-            gpg.forward(speed_in_dps)
+    def move(self, linear_speed_in_dps, angular_velocity, time=2):
 
-        elif directional_flag == 1:
-            left_motor_speed = speed_in_dps + PD_control_value
-            right_motor_speed = speed_in_dps - PD_control_value
-            gpg.set_motor_dps(gpg.MOTOR_LEFT, dps=leftMotorSpeed)
-            gpg.set_motor_dps(gpg.MOTOR_RIGHT, dps=rightMotorSpeed)
+        linear_speed = linear_speed_in_dps*100
+        angular_speed = angular_velocity*70
+        left_motor_speed = linear_speed + angular_speed
+        right_engine_speed = linear_speed - angular_speed
 
-        elif directional_flag == 2:
-            left_engine_percentage = speed_in_dps
-            right_engine_percentage = speed_in_dps * PD_control_value
-            gpg.steer(left_engine_percentage, right_engine_percentage)
+        #### Drive forward
+        if angular_velocity == 0:
+            gpg.forward()
 
-        elif directional_flag == 3:
-            gpg.backward(speed_in_dps)
-    
-   # def PD_control():
-   #     correction = Kp * Kp_error + Kd * (error - previous_error)
-   #	 return correction
-                
+        #### Turn left
+        elif angular_velocity < 0:
+            gpg.set_motor_dps(left_motor_speed, right_engine_speed)
+
+        #### Turn right
+        else:
+            gpg.set_motor_dps(left_motor_speed, right_engine_speed)
