@@ -1,9 +1,8 @@
 from easygopigo3 import EasyGoPiGo3
-import cv2
 from time import sleep
 
 class Motor:
-    def__init__(self, Kp, Kd)
+    def__init__(self, Kp, Kd):
     self.gpg = EasyGoPiGo()
     self.Kp = Kp
     self.Kd = Kd
@@ -24,9 +23,10 @@ class Motor:
             gpg.forward(speed_in_dps)
 
         elif directional_flag == 1:
-            left_engine_percentage = speed_in_dps * PD_control_value
-            right_engine_percentage = speed_in_dps
-            gpg.steer(left_engine_percentage, right_engine_percentage)
+            left_motor_speed = speed_in_dps + PD_control_value
+            right_motor_speed = speed_in_dps - PD_control_value
+            gpg.set_motor_dps(gpg.MOTOR_LEFT, dps=leftMotorSpeed)
+            gpg.set_motor_dps(gpg.MOTOR_RIGHT, dps=rightMotorSpeed)
 
         elif directional_flag == 2:
             left_engine_percentage = speed_in_dps
@@ -36,6 +36,7 @@ class Motor:
         elif directional_flag == 3:
             gpg.backward(speed_in_dps)
     
-    def PD_control():
-        pass
+   # def PD_control():
+   #     correction = Kp * Kp_error + Kd * (error - previous_error)
+   #	 return correction
                 

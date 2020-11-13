@@ -3,6 +3,9 @@ from LaneDetectionModule import getLaneCurve
 import cameraModule
 
 ####
+Kp = 1
+Kd = 1
+
 motor = Motor(Kp, Kd)
 ####
 
