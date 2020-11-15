@@ -4,8 +4,6 @@
 # robot should be driving, depending on the
 # curvature of the track
 #
-# PD_control should probably not be
-# implemented here????
 #
 ####
 
@@ -38,27 +36,22 @@ class Motor:
     # if angular_speed is more than 0 then the robot is on the left side
     # of the lane and should turn right.
     #
-    # The time signature is for how long the method should be operational,
-    # have to investigate more on the functionallity of this. Maybe
-    # it is not needed at all.
-    #
     ####
 
-    def move(self, linear_speed_in_dps, angular_velocity, time=2):
-
-        linear_speed = linear_speed_in_dps*100
-        angular_speed = angular_velocity*70
-        left_motor_speed = linear_speed + angular_speed
-        right_engine_speed = linear_speed - angular_speed
+    def move(self, linear_speed_in_dps, angular_velocity):
 
         #### Drive forward
         if angular_velocity == 0:
-            gpg.forward()
+            gpg.forward(linear_speed_in_dps)
 
         #### Turn left
         elif angular_velocity < 0:
-            gpg.set_motor_dps(left_motor_speed, right_engine_speed)
+            left_motor_speed = linear_speed_in_dps - angular_velocity
+            right_motor_speed = linear_speed_in_dps + angular_velocity
+            gpg.set_motor_dps(left_motor_speed, right_motor_speed)
 
         #### Turn right
         else:
-            gpg.set_motor_dps(left_motor_speed, right_engine_speed)
+            left_motor_speed = linear_speed_in_dps + angular_velocity
+            right_motor_speed = linear_speed_in_dps - angular_velocity
+            gpg.set_motor_dps(left_motor_speed, right_motor_speed)
