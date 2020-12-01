@@ -121,26 +121,25 @@ def find_intersection_corner_detection(img):
     corners = cv2.goodFeaturesToTrack(img, 4, 0.01, 10)
     corners = np.int0(corners)
     len_corners = len(corners)
-    min_x = 3000
-    min_y = 3000
-    max_x = 0
-    max_y = 0
 
+    rows, cols = 4,4
+    xy_coordinates = [[0]*cols]*rows
+    count = 0
     for i in corners:
         x, y = i.ravel()
-        if x < min_x:
-            min_x = x
-        if x > max_x:
-            max_x = x
-        if y < min_y:
-            min_y = y
-        if y > max_y:
-            max_y = y
+        xy_coordinates[0][count] = x
+        xy_coordinates[1][count] = y
+        count = count + 1
 
-    dist_x = int(max_x - min_x)
-    dist_y = int(max_y - min_y)
+    x_min = min(xy_coordinates[0])
+    x_max = max(xy_coordinates[0])
+    y_min = min(xy_coordinates[1])
+    y_max = max(xy_coordinates[1])
 
-    if len_corners >= 4 and dist_x < 200 and dist_y < 200:
+    dx = int(x_max-x_min)
+    dy = int(y_max-y_min)
+
+    if len_corners >= 4 and dx < 200 and dy < 200:
         return True
 
     return False
