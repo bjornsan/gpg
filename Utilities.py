@@ -1,37 +1,7 @@
 import cv2
 import numpy as np
 
-####
-# Thresholding method explained:
-#
-# convert original image into a grayscale with the openCV method
-# cvtColor wich takes the arguments of an image and the colorspace
-# to wich it should convert the image to.
-#
-# The original image has 3 channels, Red, Green, Blue. When converted to grayscale
-# there is only one channel. The range of this channel is 0-255.
-#
-# grayMin finds the lowest value in the image matrix,
-# grayMax finds the highest value in the image matrix.
-# This is done with the numpy methods 'amin' and 'amax'.
-#
-# ThreshFloat is then the mean value found in the image.
-#
-# Since we need an integer number between 0-255 we need to cast
-# the float value of thresFloat to intger which we save in the
-# variable thresh.
-#
-# The grayscale image is then converted to binary through the opencv
-# method threshold wich take 4 arguments.
-#
-# 1. the image to convert
-# 2. the threshold set for converting
-# 3. the maximum value
-# 4. the colorspace to convert to
-#
-# Finally the binary image is returned.
-#
-####
+
 def thresholding(img):
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	grayMin = np.amin(gray)
@@ -39,26 +9,8 @@ def thresholding(img):
 	threshFloat = ( float(0.5)) * ( float(grayMax) + float(grayMin) )
 	thresh = ( int (threshFloat) )
 	binary = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)[1]
-	
 	return binary
 
-####
-#
-# The warpImg method explained:
-#
-# Parameters: source image, points to warp, image width, image height, and a possibility to invert the image.
-#
-# pts1 is the original corners of the source image
-# pts2 is where we want the warped corners to be, in other words
-# the borders of the warped image.
-#
-# We save the image matrix in the variable matrix
-# Then we warp the image into birdview with the opencv
-# method warpPerspective
-#
-# Finally the warped image is returned
-#
-####
 def warpImg(img, points, w, h, inv=False):
     pts1 = np.float32(points)
     pts2 = np.float32([[0, 0], [w, 0], [0, h], [w, h]])
@@ -69,25 +21,10 @@ def warpImg(img, points, w, h, inv=False):
     imgWarp = cv2.warpPerspective(img, matrix, (w, h))
     return imgWarp
 
-####
-#
-# This method is doing exactly what it say, nothing.
-# It is only used buy the trackbarmethods,
-# when a trackbar is moved it is designed as an eventlistener
-# and triggers a method which we define. But since we do
-# not need to do anything in respons in our usage we just define
-# this empty method.
-#
-####
+
 def nothing(a):
     pass
 
-####
-#
-# This method is only used to initialize values of trackbars, this ones are used in
-# the warping method to tune the warping.
-#
-####
 def initializeTrackbars(intialTracbarVals, wT=480, hT=240):
     cv2.namedWindow("Trackbars")
     cv2.resizeWindow("Trackbars", 360, 240)
@@ -96,12 +33,6 @@ def initializeTrackbars(intialTracbarVals, wT=480, hT=240):
     cv2.createTrackbar("Width Bottom", "Trackbars", intialTracbarVals[2], wT // 2, nothing)
     cv2.createTrackbar("Height Bottom", "Trackbars", intialTracbarVals[3], hT, nothing)
 
-####
-#
-# This method returns the points we need to warp the image in
-# the warping method.
-#
-####
 def valTrackbars(wT=480, hT=240):
     widthTop = cv2.getTrackbarPos("Width Top", "Trackbars")
     heightTop = cv2.getTrackbarPos("Height Top", "Trackbars")
@@ -111,12 +42,6 @@ def valTrackbars(wT=480, hT=240):
                          (widthBottom, heightBottom), (wT - widthBottom, heightBottom)])
     return points
 
-####
-#
-# This method draws circles in the points found in the
-# valTrackbars method.
-#
-####
 def drawPoints(img, points):
     for x in range(4):
         cv2.circle(img, (int(points[x][0]), int(points[x][1])), 15, (0, 0, 255), cv2.FILLED)
@@ -144,7 +69,7 @@ def drawPoints(img, points):
 # Return the middlepoint of the image
 #
 ####
-def getHistogram(img, minPer=0.1, display=False, region=1):
+def getHistogram(img, minPer=0.1, region=1):
     if region == 1:
         histValues = np.sum(img, axis=0)
     else:
@@ -158,14 +83,71 @@ def getHistogram(img, minPer=0.1, display=False, region=1):
     basePoint = int(np.average(indexArray))
     # print(basePoint)
 
-    if display:
-        imgHist = np.zeros((img.shape[0], img.shape[1], 3), np.uint8)
-        for x, intensity in enumerate(histValues):
-            cv2.line(imgHist, (x, img.shape[0]), (x, img.shape[0] - intensity // 255 // region), (255, 0, 255), 1)
-            cv2.circle(imgHist, (basePoint, img.shape[0]), 20, (0, 255, 255), cv2.FILLED)
-        return basePoint, imgHist
-
     return basePoint
+
+def find_intersection(img, minPer=0.1, region=4):
+    hist_values = np.sum(img[img.shape[0] // region:, :], axis=0)
+    len_hist_values = len(hist_values)
+
+    roi_values = []
+
+    for i in range(len_hist_values):
+        roi_values.append(hist_values[i][0])
+        roi_values.append(hist_values[i][1])
+        roi_values.append(hist_values[i][2])
+        roi_values.append(hist_values[i][3])
+        roi_values.append(hist_values[i][-1])
+        roi_values.append(hist_values[i][-2])
+        roi_values.append(hist_values[i][-3])
+        roi_values.append(hist_values[i][-4])
+
+    max_value = np.max(roi_values)
+    min_value = minPer * max_value
+    white_values = np.where(roi_values >= min_value)
+
+    white_two = []
+    for i in range(len_roi_values):
+        if roi_values[]
+    len_roi_values = len(roi_values)
+    len_white_values = len(white_values)
+    percentage_white = len_white_values/len_roi_values
+
+    if percentage_white > 0.7:
+        return True
+
+    return False
+
+def find_intersection_corner_detection(img):
+    corners = cv2.goodFeaturesToTrack(img, 4, 0.01, 10)
+    corners = np.int0(corners)
+    len_corners = len(corners)
+    min_x = 3000
+    min_y = 3000
+    max_x = 0
+    max_y = 0
+
+    for i in corners:
+        x, y = i.ravel()
+        if x < min_x:
+            min_x = x
+        if x > max_x:
+            max_x = x
+        if y < min_y:
+            min_y = y
+        if y > max_y:
+            max_y = y
+
+    dist_x = int(max_x - min_x)
+    dist_y = int(max_y - min_y)
+
+    if len_corners >= 4 and dist_x < 200 and dist_y < 200:
+        return True
+
+    return False
+
+
+def find_intersection_contours():
+    pass
 
 ####
 #
@@ -183,5 +165,5 @@ def PD_control(Kp, Kd, cte, previous_cte):
     diff_cte = cte-previous_cte
     prop_term = -Kp * cte
     diff_term = -Kd * diff_cte
-    correction = prop_term + diff_term
-    return correction
+    angular_velocity = prop_term + diff_term
+    return angular_velocity
