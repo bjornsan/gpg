@@ -1,57 +1,35 @@
-####
-#
-# This class controls in what direction the
-# robot should be driving, depending on the
-# curvature of the track
-#
-#
-####
-
-
 from easygopigo3 import EasyGoPiGo3
 
 class Motor:
     def __init__(self):
         self.gpg = EasyGoPiGo3()
-        self.left_motor_speed
-        self.right_motor_speed
+        self.wheel_radius = 33.25
+        self.wheel_base = 117
+        # spesificed by gopigo docs:
+        # wheel diameter = 66.5
+        # wheel base = 117
 
-    ####
-    #
-    # Unicycle model - based on linear and angular velocity
-    # Trying to keep the velocity low, for better performance.
-    # Hardware wise the maximum speed can be set to 1000dps
-    # We will keep the maximum speed to 300dps.
-    # Linear speed is set in the main loop, we have chosen
-    # 200dps to be the default linear speed.
-    #
-    # Curvature will define the total speed.
-    #
-    # if angular_speed == 0, then the robot is exactly on the lane and should
-    # drive forward.
-    #
-    # if angular_speed is less than 0 than the robot is on the right side
-    # of the lane and should turn left.
-    #
-    # if angular_speed is more than 0 then the robot is on the left side
-    # of the lane and should turn right.
-    #
-    ####
+    def move(self, linear_speed, angular_velocity):
+        # Taking the wheel base and wheeel radius in consideration
+        left_motor_speed = int((( 2 * linear_speed ) - (angular_velocity * self.wheel_base)) / ( 2 * self.wheel_radius))
+        right_motor_speed = int((( 2 * linear_speed ) + (angular_velocity * self.wheel_base)) / ( 2 * self.wheel_radius))
 
-    def move(self, linear_speed_in_dps, angular_velocity):
+        if left_motor_speed > 300:
+            left_motor_speed = 300
+        if right_motor_speed > 300:
+            right_motor_speed = 300
 
         #### Drive forward
         if angular_velocity == 0:
-            gpg.forward(linear_speed_in_dps)
-
+            self.gpg.set_motor_dps(self.gpg.MOTOR_LEFT, linear_speed)
+            self.gpg.set_motor_dps(self.gpg.MOTOR_RIGHT, linear_speed)
+        #### Turn right
+        elif angular_velocity > 0:
+            self.gpg.set_motor_dps(self.gpg.MOTOR_LEFT, left_motor_speed)
+            self.gpg.set_motor_dps(self.gpg.MOTOR_RIGHT, right_motor_speed)
         #### Turn left
         elif angular_velocity < 0:
-            left_motor_speed = linear_speed_in_dps - angular_velocity
-            right_motor_speed = linear_speed_in_dps + angular_velocity
-            gpg.set_motor_dps(left_motor_speed, right_motor_speed)
+            self.gpg.set_motor_dps(self.gpg.MOTOR_LEFT, left_motor_speed)
+            self.gpg.set_motor_dps(self.gpg.MOTOR_RIGHT, right_motor_speed)
 
-        #### Turn right
-        else:
-            left_motor_speed = linear_speed_in_dps + angular_velocity
-            right_motor_speed = linear_speed_in_dps - angular_velocity
-            gpg.set_motor_dps(left_motor_speed, right_motor_speed)
+
