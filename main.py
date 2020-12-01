@@ -4,39 +4,38 @@ import Utilities
 import cameraModule
 
 ####
-Kp = 1
-Kd = 1
+Kp = 5
+Kd = 2.5
 previous_cte = 0.0
 
 motor = Motor()
 ####
 
-###
-#
-# angular_velocity > 0 robot turns right
-# angular_velocity < 0: robot turns left
-# angular_velocity == 0: robot goes straight
-#
-###
 def main():
     global previous_cte
 
     img = cameraModule.getImg()
-    cte = getLaneCurve(img, 1)
+    cte, intersection = getLaneCurve(img, 1)
 
-    angular_velocity = Utilities.PD_control(Kp, Kd, cte, previous_cte)
-    linear_velocity = 200
+    if intersection:
+        # change region of interest to right side
+        motor.gpg.turn_degrees(90)
+        angular_velocity = 0
+    else:
+        # normal region of interest
+        angular_velocity = Utilities.PD_control(Kp, Kd, cte, previous_cte)
 
-    max_angular_speed = 300
+    linear_velocity = 100
+    max_angular_speed = 200
     if angular_velocity > max_angular_speed:
         angular_velocity = max_angular_speed
     if angular_velocity < -max_angular_speed:
         angular_velocity = -max_angular_speed
 
+    if -0.05 < angular_velocity < 0.05:
+        angular_velocity = 0
 
     motor.move(linear_velocity, angular_velocity)
-
-
     previous_cte = cte
 
     # only used if image is needed to be displayed
