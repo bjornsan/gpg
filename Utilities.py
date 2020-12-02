@@ -85,6 +85,23 @@ def getHistogram(img, minPer=0.1, region=1):
 
     return basePoint
 
+####
+#
+# Needs more work, not currently working in all situations.
+#
+# The idea is to check the first few and last few pixels in
+# each row and store them in a new array.
+#
+# After that to calculate the max value of the array and the
+# min value of the array. With a user given min percentage.
+#
+# A new array is created containing the elements considered to be
+# >= the minimum value.
+#
+# Lastly we find out if the percentage of white pixels found are
+# more than 70%. If So then we have found an interection.
+#
+####
 def find_intersection(img, minPer=0.1, region=4):
     hist_values = np.sum(img[img.shape[0] // region:, :], axis=0)
     len_hist_values = len(hist_values)
@@ -105,9 +122,6 @@ def find_intersection(img, minPer=0.1, region=4):
     min_value = minPer * max_value
     white_values = np.where(roi_values >= min_value)
 
-    white_two = []
-    for i in range(len_roi_values):
-        if roi_values[]
     len_roi_values = len(roi_values)
     len_white_values = len(white_values)
     percentage_white = len_white_values/len_roi_values
@@ -117,6 +131,19 @@ def find_intersection(img, minPer=0.1, region=4):
 
     return False
 
+####
+#
+# Using Harris corner detection to find an intersection.
+#
+# Storing the x and y values in an array and finding out
+# x_min, x_max, y_min, y_max
+#
+# calculating dx and dy.
+#
+# If we detect minimum 4 corners that are also
+# separated by no more than 200pixels we consider
+# that we have found an intersection.
+#
 def find_intersection_corner_detection(img):
     corners = cv2.goodFeaturesToTrack(img, 4, 0.01, 10)
     corners = np.int0(corners)
@@ -144,9 +171,39 @@ def find_intersection_corner_detection(img):
 
     return False
 
+####
+#
+# Detects straight lines using Hough Transform.
+#
+# declaring two variables first_border_x and last_border_x
+# for storing the border x-values for the right most lane.
+#
+# Returning the x-values between where the right most track is.
+#
+####
+def find_borders_of_right_lane(img):
+    lines = cv2.HoughLines(img, 1, np.pi / 180, 200)
 
-def find_intersection_contours():
-    pass
+    first_border_x = 0
+    last_border_x = 0
+    for i in range(4):
+        print(i)
+        for rho, theta in lines[i]:
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
+
+            if i == 2:
+                last_border_x = x1
+            if i == 3:
+                first_border_x = x1
+
+    return first_border_x, last_border_x
 
 ####
 #
