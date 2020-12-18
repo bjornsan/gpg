@@ -1,5 +1,3 @@
-# import necessary packages
-
 % matplotlib
 inline
 from easygopigo3 import EasyGoPiGo3
@@ -23,10 +21,16 @@ camera.framerate = 32
 rawCapture = PiRGBArray(camera, size=(480, 240))
 time.sleep(2)
 
-
+####
+#
+#  getLaneCurve is in part taken from Murtaza Workshop's
+#  Youtube channel, and his tutorial about a raspberry pi lane follower
+#  https://www.youtube.com/watch?v=aXqoPiMPhDw&list=PLMoSUbG1Q_r_wT0Ac7rOlhlwq9VsZDA0b
+#
+####
 def getLaneCurve(img):
     #### STEP 1
-    imgThres = thresholding(img, )
+    imgThres = thresholding(img)
 
     #### STEP 2
     hT, wT, c = img.shape
@@ -37,6 +41,7 @@ def getLaneCurve(img):
     middlePoint = getHistogram(imgWarp, minPer=0.5, region=4)
     curveAveragePoint = getHistogram(imgWarp, minPer=0.9, region=1)
     curveRaw = curveAveragePoint - middlePoint
+
     intersection = find_intersection(imgWarp)
 
     if intersection:
@@ -51,10 +56,16 @@ def getLaneCurve(img):
     #### NORMALIZATION
     curve = curve / 100
     if curve > 1: curve = 1
-    if curve < -1: curve == -1
+    if curve < -1: curve = -1
 
     return curve, intersection
 
+####
+#
+#  The thresholding function is taken from the lectures
+#  by Maben Rabi.
+#
+####
 def thresholding(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     grayMin = np.amin(gray)
@@ -65,14 +76,35 @@ def thresholding(img):
 
     return binary
 
+####
+#
+#  def nothing is taken from Murtaza Workshop's
+#  Youtube channel, and his tutorial about a raspberry pi lane follower
+#  https://www.youtube.com/watch?v=aXqoPiMPhDw&list=PLMoSUbG1Q_r_wT0Ac7rOlhlwq9VsZDA0b
+#
+####
 def nothing(a):
     pass
 
+####
+#
+#  valTrackbars is taken from Murtaza Workshop's
+#  Youtube channel, and his tutorial about a raspberry pi lane follower
+#  https://www.youtube.com/watch?v=aXqoPiMPhDw&list=PLMoSUbG1Q_r_wT0Ac7rOlhlwq9VsZDA0b
+#
+####
 def valTrackbars(wT=480, hT=240):
     points = np.float32([(102, 80), (wT - 102, 80),
                          (20, 214), (wT - 20, 214)])
     return points
 
+####
+#
+#  warpImg is taken from Murtaza Workshop's
+#  Youtube channel, and his tutorial about a raspberry pi lane follower
+#  https://www.youtube.com/watch?v=aXqoPiMPhDw&list=PLMoSUbG1Q_r_wT0Ac7rOlhlwq9VsZDA0b
+#
+####
 def warpImg(img, points, w, h):
     pts1 = np.float32(points)
     pts2 = np.float32([[0, 0], [w, 0], [0, h], [w, h]])
@@ -81,6 +113,13 @@ def warpImg(img, points, w, h):
     imgWarp = cv2.warpPerspective(img, matrix, (w, h))
     return imgWarp
 
+####
+#
+#  getHistogram is in part taken from Murtaza Workshop's
+#  Youtube channel, and his tutorial about a raspberry pi lane follower
+#  https://www.youtube.com/watch?v=aXqoPiMPhDw&list=PLMoSUbG1Q_r_wT0Ac7rOlhlwq9VsZDA0b
+#
+####
 def getHistogram(img, minPer=0.1, region=1):
     if region == 1:
         histValues = np.sum(img, axis=0)
@@ -100,7 +139,12 @@ def getHistogram(img, minPer=0.1, region=1):
 
     return basePoint
 
-
+####
+#
+#  find_two_lanes is written by us,
+#  group 4.
+#
+####
 def find_two_lanes(histValues):
     intensity_flag = 0
     index = 0
@@ -119,7 +163,12 @@ def find_two_lanes(histValues):
     print("one lane only")
     return False, index
 
-
+####
+#
+#  getRightLaneHistogram is written by us,
+#  group 4.
+#
+####
 def getRightLaneHistogram(histValues, index):
     right_lane_values = np.zeros(len(histValues))
 
@@ -134,6 +183,12 @@ def getRightLaneHistogram(histValues, index):
 
     return right_lane_values
 
+####
+#
+#  find_intersection is written by us,
+#  group 4
+#
+####
 def find_intersection(img, region=4):
     hist_values = np.sum(img[img.shape[0] // region:, :], axis=0)
     min_value = 50
@@ -144,7 +199,12 @@ def find_intersection(img, region=4):
 
     return True
 
-
+####
+#
+#  PD_control is written by us,
+#  group 4.
+#
+####
 def PD_control(Kp, Kd, cte, previous_cte):
     diff_cte = cte - previous_cte
     prop_term = -Kp * cte
@@ -152,7 +212,12 @@ def PD_control(Kp, Kd, cte, previous_cte):
     angular_velocity = prop_term + diff_term
     return angular_velocity
 
-
+####
+#
+#  move is written by us,
+#  group 4
+#
+####
 def move(linear_speed_in_dps, angular_velocity):
 
     left_motor_speed = ((2 * linear_speed_in_dps) - (angular_velocity * 117)) / (2 * 33.25)
