@@ -8,24 +8,44 @@ import time
 import cv2
 import numpy as np
 
+####
+#
+#  Globals
+#
+####
 curveList = []
 avgVal = 10
 previous_cte = 0.0
 Kp = 5
 Kd = 2.5
+linear_velocity = 100
+max_angular_speed = 300
 
+####
+#
+#  Robot and camera initialization
+#
+####
 robot = EasyGoPiGo3()
 camera = PiCamera()
+# (w, h)
 camera.resolution = (480, 240)
 camera.framerate = 32
 rawCapture = PiRGBArray(camera, size=(480, 240))
 time.sleep(2)
+
 
 ####
 #
 #  getLaneCurve is in part taken from Murtaza Workshop's
 #  Youtube channel, and his tutorial about a raspberry pi lane follower
 #  https://www.youtube.com/watch?v=aXqoPiMPhDw&list=PLMoSUbG1Q_r_wT0Ac7rOlhlwq9VsZDA0b
+#
+#  Parameters: image - the raw image from camera feed to process
+#
+#  Return values: float curve, bool intersect
+#  curve is the curvature of the track.
+#  intersect depends on if there was found an intersection or not
 #
 ####
 def getLaneCurve(img):
@@ -42,10 +62,10 @@ def getLaneCurve(img):
     curveAveragePoint = getHistogram(imgWarp, minPer=0.9, region=1)
     curveRaw = curveAveragePoint - middlePoint
 
-    intersection = find_intersection(imgWarp)
+    intersect = find_intersection(imgWarp)
 
-    if intersection:
-        return 0, intersection
+    if intersect:
+        return 0, intersect
 
     #### SETP 4
     curveList.append(curveRaw)
@@ -58,7 +78,11 @@ def getLaneCurve(img):
     if curve > 1: curve = 1
     if curve < -1: curve = -1
 
-    return curve, intersection
+    # print("Curve_value: {}".format(curve))
+    print(f"Curve_value: {curve}")
+
+    return curve, intersect
+
 
 ####
 #
@@ -76,6 +100,7 @@ def thresholding(img):
 
     return binary
 
+
 ####
 #
 #  def nothing is taken from Murtaza Workshop's
@@ -85,6 +110,7 @@ def thresholding(img):
 ####
 def nothing(a):
     pass
+
 
 ####
 #
@@ -97,6 +123,7 @@ def valTrackbars(wT=480, hT=240):
     points = np.float32([(102, 80), (wT - 102, 80),
                          (20, 214), (wT - 20, 214)])
     return points
+
 
 ####
 #
@@ -113,6 +140,7 @@ def warpImg(img, points, w, h):
     imgWarp = cv2.warpPerspective(img, matrix, (w, h))
     return imgWarp
 
+
 ####
 #
 #  getHistogram is in part taken from Murtaza Workshop's
@@ -121,23 +149,35 @@ def warpImg(img, points, w, h):
 #
 ####
 def getHistogram(img, minPer=0.1, region=1):
-    if region == 1:
-        histValues = np.sum(img, axis=0)
-    else:
-        histValues = np.sum(img[img.shape[0] // region:, :], axis=0)
+    two_lanes = False
 
-    two_lanes, right_lane_index = find_two_lanes(histValues)
+    if region == 1:
+        hist_values = np.sum(img, axis=0)
+    else:
+        hist_values = np.sum(img[img.shape[0] // region:, :], axis=0)
+
+    if region == 4:
+        two_lanes, right_lane_index = find_two_lanes(hist_values)
+
+        if two_lanes:
+            hist_values = get_right_lane_histogram(hist_values, right_lane_index)
+            # robot.turn_degrees(0)
+
+    min_threshold = get_min_threshold(hist_values, minPer)
+    index_array = np.where(hist_values >= min_threshold)
+    base_point = int(np.average(index_array))
 
     if two_lanes:
-        histValues = getRightLaneHistogram(histValues, right_lane_index)
+        return -base_point
 
-    maxValue = np.max(histValues)
-    minValue = minPer * maxValue
+    return base_point
 
-    indexArray = np.where(histValues >= minValue)
-    basePoint = int(np.average(indexArray))
 
-    return basePoint
+def get_min_threshold(hist_values, min_per):
+    max_value = np.max(hist_values)
+    min_threshold = min_per * max_value
+    return min_threshold
+
 
 ####
 #
@@ -145,23 +185,23 @@ def getHistogram(img, minPer=0.1, region=1):
 #  group 4.
 #
 ####
-def find_two_lanes(histValues):
+def find_two_lanes(hist_values):
+    min_per = 0.4
+    min_threshold = get_min_threshold(hist_values, min_per)
     intensity_flag = 0
-    index = 0
 
-    for pixel in range(len(histValues)):
-
-        if intensity_flag == 0 and histValues[pixel] > 170:
+    for index, pixel_sum in enumerate(hist_values):
+        if intensity_flag == 0 and pixel_sum > min_threshold:
             intensity_flag = 1
-        if intensity_flag == 1 and histValues[pixel] < 175:
+        if intensity_flag == 1 and pixel_sum < min_threshold:
             intensity_flag = 2
-        if intensity_flag == 2 and histValues[pixel] > 175:
-            index = pixel
+        if intensity_flag == 2 and pixel_sum > min_threshold:
             print("two lanes found")
             return True, index
 
     print("one lane only")
-    return False, index
+    return False, 0
+
 
 ####
 #
@@ -169,19 +209,18 @@ def find_two_lanes(histValues):
 #  group 4.
 #
 ####
-def getRightLaneHistogram(histValues, index):
-    right_lane_values = np.zeros(len(histValues))
-
-    second_lane_values = histValues[index:]
-    for i in range(index):
-        right_lane_values[i] = 0
+def get_right_lane_histogram(hist_values, index_of_right_lane):
+    hist_length = len(hist_values)
+    right_lane_hist = np.zeros(hist_length, dtype=int)
+    right_lane_values = hist_values[index_of_right_lane:]
 
     count = 0
-    for pixel in range(index, len(histValues)):
-        right_lane_values[pixel] = second_lane_values[count]
+    for i in range(index_of_right_lane, hist_length):
+        right_lane_hist[i] = right_lane_values[count]
         count = count + 1
 
-    return right_lane_values
+    return right_lane_hist
+
 
 ####
 #
@@ -191,13 +230,16 @@ def getRightLaneHistogram(histValues, index):
 ####
 def find_intersection(img, region=4):
     hist_values = np.sum(img[img.shape[0] // region:, :], axis=0)
-    min_value = 50
+    # hist_values = np.sum(img, axis=0)
+    min_value = 200
 
     for pixel in hist_values:
         if pixel < min_value:
             return False
 
+    print("found intersection")
     return True
+
 
 ####
 #
@@ -210,31 +252,32 @@ def PD_control(Kp, Kd, cte, previous_cte):
     prop_term = -Kp * cte
     diff_term = -Kd * diff_cte
     angular_velocity = prop_term + diff_term
+
     return angular_velocity
+
 
 ####
 #
 #  move is written by us,
 #  group 4
 #
+#  angular_velocity > 0 = turn right
+#  angular_velocity < 0 = turn left
+#
 ####
 def move(linear_speed_in_dps, angular_velocity):
+    wheel_base = 117
+    wheel_radius = 33.25
 
-    left_motor_speed = ((2 * linear_speed_in_dps) - (angular_velocity * 117)) / (2 * 33.25)
-    right_motor_speed = ((2 * linear_speed_in_dps) + (angular_velocity * 117)) / (2 * 33.25)
+    left_motor_speed = (((2 * linear_speed_in_dps) - (angular_velocity * wheel_base)) / (2 * wheel_radius)) * 2
+    right_motor_speed = (((2 * linear_speed_in_dps) + (angular_velocity * wheel_base)) / (2 * wheel_radius)) * 2
 
     #### Drive forward
     if angular_velocity == 0:
-        robot.set_motor_dps(robot.MOTOR_LEFT, 100)
-        robot.set_motor_dps(robot.MOTOR_RIGHT, 100)
-
-    #### Turn left
-    elif angular_velocity < 0:
-        robot.set_motor_dps(robot.MOTOR_LEFT, left_motor_speed)
-        robot.set_motor_dps(robot.MOTOR_RIGHT, right_motor_speed)
-
-    #### Turn right
-    elif angular_velocity > 0:
+        robot.set_motor_dps(robot.MOTOR_LEFT, linear_speed_in_dps)
+        robot.set_motor_dps(robot.MOTOR_RIGHT, linear_speed_in_dps)
+    #### Turn left/ right
+    else:
         robot.set_motor_dps(robot.MOTOR_LEFT, left_motor_speed)
         robot.set_motor_dps(robot.MOTOR_RIGHT, right_motor_speed)
 
@@ -242,23 +285,22 @@ def move(linear_speed_in_dps, angular_velocity):
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     image = frame.array
 
-    curve, intersection = getLaneCurve(image)
+    cte, intersection = getLaneCurve(image)
 
     if intersection:
         robot.turn_degrees(2)
-        angular_velocity = 0
+        # curve = 0.5
+    if cte < 0.03 and cte > -0.03:
+        cte = 0
 
-    angular_velocity = PD_control(Kp, Kd, curve, previous_cte)
-    linear_velocity = 150
-    max_angular_speed = 300
+    angular_velocity = PD_control(Kp, Kd, cte, previous_cte)
 
     if angular_velocity > max_angular_speed:
         angular_velocity = max_angular_speed
 
     move(linear_velocity, angular_velocity)
 
-    previous_cte = curve
+    previous_cte = cte
 
     rawCapture.truncate(0)
-
     time.sleep(0.1)
