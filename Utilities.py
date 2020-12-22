@@ -47,103 +47,38 @@ def drawPoints(img, points):
         cv2.circle(img, (int(points[x][0]), int(points[x][1])), 15, (0, 0, 255), cv2.FILLED)
     return img
 
-####
-#
-# parameters:
-# 1 source image
-# 2 minimum percentage of what is considered as the lane
-# 3 display image on screen or not
-# 4 what region should be evaluated
-#
-# region 1 is the full image
-# any other region is a cutoff the image
-#
-# This is all about pixel summation
-#
-# maxValue finds the biggest sum
-# minValue finds the smallest sum
-#
-# indexArray is an array that contains the indexes from
-# our image that we consider to be the lane.
-#
-# Return the middlepoint of the image
-#
-####
+
 def getHistogram(img, minPer=0.1, region=1):
+    two_lanes = False
+
     if region == 1:
-        histValues = np.sum(img, axis=0)
+        hist_values = np.sum(img, axis=0)
     else:
-        histValues = np.sum(img[img.shape[0] // region:, :], axis=0)
+        hist_values = np.sum(img[img.shape[0] // region:, :], axis=0)
 
-    # print(histValues)
-    maxValue = np.max(histValues)
-    minValue = minPer * maxValue
+    if region == 4:
+        two_lanes, right_lane_index = find_two_lanes(hist_values)
 
-    indexArray = np.where(histValues >= minValue)
-    basePoint = int(np.average(indexArray))
-    # print(basePoint)
+        if two_lanes:
+            hist_values = get_right_lane_histogram(hist_values, right_lane_index)
+            # robot.turn_degrees(0)
 
-    return basePoint
+    min_threshold = get_min_threshold(hist_values, minPer)
+    index_array = np.where(hist_values >= min_threshold)
+    base_point = int(np.average(index_array))
 
-####
-#
-# Needs more work, not currently working in all situations.
-#
-# The idea is to check the first few and last few pixels in
-# each row and store them in a new array.
-#
-# After that to calculate the max value of the array and the
-# min value of the array. With a user given min percentage.
-#
-# A new array is created containing the elements considered to be
-# >= the minimum value.
-#
-# Lastly we find out if the percentage of white pixels found are
-# more than 70%. If So then we have found an interection.
-#
-####
-def find_intersection(img, minPer=0.1, region=4):
-    hist_values = np.sum(img[img.shape[0] // region:, :], axis=0)
-    len_hist_values = len(hist_values)
+    if two_lanes:
+        return -base_point
 
-    roi_values = []
+    return base_point
 
-    for i in range(len_hist_values):
-        roi_values.append(hist_values[i][0])
-        roi_values.append(hist_values[i][1])
-        roi_values.append(hist_values[i][2])
-        roi_values.append(hist_values[i][3])
-        roi_values.append(hist_values[i][-1])
-        roi_values.append(hist_values[i][-2])
-        roi_values.append(hist_values[i][-3])
-        roi_values.append(hist_values[i][-4])
 
-    max_value = np.max(roi_values)
-    min_value = minPer * max_value
-    white_values = np.where(roi_values >= min_value)
+def get_min_threshold(hist_values, min_per):
+    max_value = np.max(hist_values)
+    min_threshold = min_per * max_value
+    return min_threshold
 
-    len_roi_values = len(roi_values)
-    len_white_values = len(white_values)
-    percentage_white = len_white_values/len_roi_values
 
-    if percentage_white > 0.7:
-        return True
-
-    return False
-
-####
-#
-# Using Harris corner detection to find an intersection.
-#
-# Storing the x and y values in an array and finding out
-# x_min, x_max, y_min, y_max
-#
-# calculating dx and dy.
-#
-# If we detect minimum 4 corners that are also
-# separated by no more than 200pixels we consider
-# that we have found an intersection.
-#
 def find_intersection_corner_detection(img):
     corners = cv2.goodFeaturesToTrack(img, 4, 0.01, 10)
     corners = np.int0(corners)
@@ -166,21 +101,56 @@ def find_intersection_corner_detection(img):
     dx = int(x_max-x_min)
     dy = int(y_max-y_min)
 
-    if len_corners >= 4 and dx < 200 and dy < 200:
+    if len_corners >= 4 and dx < 50 and dy < 50:
         return True
 
     return False
 
-####
-#
-# Detects straight lines using Hough Transform.
-#
-# declaring two variables first_border_x and last_border_x
-# for storing the border x-values for the right most lane.
-#
-# Returning the x-values between where the right most track is.
-#
-####
+
+def find_intersection(img, region=4):
+    hist_values = np.sum(img[img.shape[0] // region:, :], axis=0)
+    # hist_values = np.sum(img, axis=0)
+    min_value = 200
+
+    for pixel in hist_values:
+        if pixel < min_value:
+            return False
+
+    print("found intersection")
+    return True
+
+
+def find_two_lanes(hist_values):
+    min_per = 0.4
+    min_threshold = get_min_threshold(hist_values, min_per)
+    intensity_flag = 0
+
+    for index, pixel_sum in enumerate(hist_values):
+        if intensity_flag == 0 and pixel_sum > min_threshold:
+            intensity_flag = 1
+        if intensity_flag == 1 and pixel_sum < min_threshold:
+            intensity_flag = 2
+        if intensity_flag == 2 and pixel_sum > min_threshold:
+            print("two lanes found")
+            return True, index
+
+    print("one lane only")
+    return False, 0
+
+
+def get_right_lane_histogram(hist_values, index_of_right_lane):
+    hist_length = len(hist_values)
+    right_lane_hist = np.zeros(hist_length, dtype=int)
+    right_lane_values = hist_values[index_of_right_lane:]
+
+    count = 0
+    for i in range(index_of_right_lane, hist_length):
+        right_lane_hist[i] = right_lane_values[count]
+        count = count + 1
+
+    return right_lane_hist
+
+
 def find_borders_of_right_lane(img):
     lines = cv2.HoughLines(img, 1, np.pi / 180, 200)
 
@@ -205,18 +175,6 @@ def find_borders_of_right_lane(img):
 
     return first_border_x, last_border_x
 
-####
-#
-# cte = crosstrack error || in other words proportional error
-# previous cte = previous crosstrack error
-#
-# diff_cte (differential error) = current cte - previous cte
-#
-# Kp, Kd are constants chosen by the user.
-#
-# correction is the total error calculated by the PD algorithm
-#
-####
 def PD_control(Kp, Kd, cte, previous_cte):
     diff_cte = cte-previous_cte
     prop_term = -Kp * cte
