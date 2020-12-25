@@ -181,3 +181,28 @@ def PD_control(Kp, Kd, cte, previous_cte):
     diff_term = -Kd * diff_cte
     angular_velocity = prop_term + diff_term
     return angular_velocity
+
+
+def PID(Kp, Kd, Ki, N):
+    int_crosstrack_error = 0.0
+
+    crosstrack_error = my_robot.y
+
+    for i in range(N):
+        diff_crosstrackerror = my_robot.y - crosstrack_error
+        crosstrack_error = my_robot.y
+        int_crosstrack_error += crosstrack_error
+        steer = -Kp * crosstrack_error \
+                -Kd * diff_crosstrackerror \
+                -Ki * int_crosstrack_error
+        my_robot = myrobot.move(steer, speed)
+
+
+def PD(Kp, Kd, N)
+    robot_pos_y = 0
+    crosstrack_error = robot_pos_y
+    diff_crosstrackerror = robot_pos_y - crosstrack_error
+
+    cte = present_curve
+    dcte = present_curve - cte
+    real_curve = -Kp * cte -Kd*dcte

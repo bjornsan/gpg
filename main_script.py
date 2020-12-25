@@ -260,10 +260,6 @@ def PD_control(Kp, Kd, cte, previous_cte):
 #
 #  move is written by us,
 #  group 4
-#
-#  angular_velocity > 0 = turn right
-#  angular_velocity < 0 = turn left
-#
 ####
 def move(linear_speed_in_dps, angular_velocity):
     wheel_base = 117
@@ -289,7 +285,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
     if intersection:
         robot.turn_degrees(2)
-        # curve = 0.5
+     
     if cte < 0.03 and cte > -0.03:
         cte = 0
 
